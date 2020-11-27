@@ -18,6 +18,7 @@ version = "1.0.0"
 dependencies {
     testImplementation(kotlin("test-junit"))
     implementation(compose.desktop.currentOs)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
 }
 
 compose.desktop {

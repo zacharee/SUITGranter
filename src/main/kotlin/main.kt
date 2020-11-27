@@ -6,17 +6,24 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumnFor
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.vectorXmlResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.awt.image.BufferedImage
 import java.io.InputStream
 import java.util.regex.Pattern
@@ -61,9 +68,11 @@ fun main() = Window(
     size = IntSize(640, 640),
     icon = ImageIO.read(Thread.currentThread().contextClassLoader.getResource("images/icon.png"))
 ) {
+    val scope = rememberCoroutineScope()
     val currentDevice = remember { mutableStateOf(DeviceInfo.EMPTY) }
     val availableDevices = remember { mutableStateListOf<DeviceInfo>() }
     val menuExpanded = remember { mutableStateOf(false) }
+    val loading = remember { mutableStateOf(false) }
 
     val permissionStates = remember {
         mutableStateOf(
@@ -71,7 +80,9 @@ fun main() = Window(
         )
     }
 
-    fun refreshInfo() {
+    suspend fun refreshInfo() {
+        loading.value = true
+
         val newList = getDevices()
 
         if (!newList.containsAll(availableDevices) || !availableDevices.containsAll(newList)) {
@@ -102,9 +113,13 @@ fun main() = Window(
                 putAll(listOf(WSS to wss, PUS to pus, DUMP to dump))
             }
         }
+
+        loading.value = false
     }
 
-    refreshInfo()
+    LaunchedEffect(currentDevice.value) {
+        refreshInfo()
+    }
 
     DesktopMaterialTheme(
         colors = darkColors()
@@ -113,109 +128,126 @@ fun main() = Window(
             Modifier.fillMaxSize()
                 .background(MaterialTheme.colors.background)
         ) {
-            Column(Modifier.fillMaxSize()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp),
-                    backgroundColor = Color(40, 40, 40)
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .padding(8.dp)
+            Box {
+                Column(Modifier.fillMaxSize()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp),
+                        backgroundColor = Color(40, 40, 40)
                     ) {
-                        Text("Current device", modifier = Modifier.align(Alignment.CenterVertically))
-                        Spacer(Modifier.size(8.dp))
-                        DropdownMenu(
-                            toggle = {
-                                Box(
-                                    Modifier.border(
-                                        width = 1.dp,
-                                        color = MaterialTheme.colors.secondary,
-                                        shape = RoundedCornerShape(4.dp)
-                                    )
-                                        .height(48.dp)
-                                        .align(Alignment.CenterVertically)
-                                        .clickable {
-                                            menuExpanded.value = !menuExpanded.value
-                                        }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.align(Alignment.Center)
-                                            .padding(8.dp)
-                                    ) {
-                                        Text(
-                                            text = currentDevice.value.deviceName
-                                        )
-                                        Icon(
-                                            vectorXmlResource("images/chevron_down.xml"),
-                                            tint = Color.White,
-                                            modifier = Modifier.rotate(if (menuExpanded.value) 180f else 0f)
-                                        )
-                                    }
-                                }
-                            },
-                            expanded = menuExpanded.value,
-                            onDismissRequest = { menuExpanded.value = false }
-                        ) {
-                            @Composable
-                            fun DeviceItem(info: DeviceInfo) {
-                                DropdownMenuItem(onClick = {
-                                    currentDevice.value = info
-                                    menuExpanded.value = false
-                                }) {
-                                    Text(info.deviceName)
-                                }
-                            }
-
-                            availableDevices.forEach {
-                                DeviceItem(it)
-                            }
-                            if (availableDevices.isEmpty()) {
-                                DeviceInfo.EMPTY
-                            }
-                        }
-                        if (currentDevice.value.deviceStatus != DeviceInfo.Status.DEVICE) {
-                            Spacer(Modifier.size(8.dp))
-                            Text(
-                                text = currentDevice.value.deviceStatus.toString(),
-                                modifier = Modifier.align(Alignment.CenterVertically),
-                                color = Color.Red
-                            )
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Button(
-                            onClick = {
-                                refreshInfo()
-                            },
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        ) {
-                            Text("Refresh")
-                        }
-                    }
-                }
-
-                if (currentDevice.value.deviceStatus == DeviceInfo.Status.DEVICE) {
-                    LazyColumnFor(items = permissionStates.value.keys.toList()) {
                         Row(
                             Modifier.fillMaxWidth()
-                                .height(48.dp)
                                 .padding(8.dp)
                         ) {
-                            Text(text = it, modifier = Modifier.align(Alignment.CenterVertically))
-                            Spacer(modifier = Modifier.weight(1f))
-                            Button(
-                                modifier = Modifier.align(Alignment.CenterVertically),
-                                onClick = {
-                                    setPermission(
-                                        currentDevice.value.deviceName,
-                                        it,
-                                        if (permissionStates.value[it]!!) "revoke" else "grant"
-                                    )
-                                    refreshInfo()
-                                }
+                            Text("Current device", modifier = Modifier.align(Alignment.CenterVertically))
+                            Spacer(Modifier.size(8.dp))
+                            DropdownMenu(
+                                toggle = {
+                                    Box(
+                                        Modifier.border(
+                                            width = 1.dp,
+                                            color = MaterialTheme.colors.secondary,
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                            .height(48.dp)
+                                            .align(Alignment.CenterVertically)
+                                            .clickable {
+                                                menuExpanded.value = !menuExpanded.value
+                                            }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.align(Alignment.Center)
+                                                .padding(8.dp)
+                                        ) {
+                                            Text(
+                                                text = currentDevice.value.deviceName
+                                            )
+                                            Icon(
+                                                vectorXmlResource("images/chevron_down.xml"),
+                                                tint = Color.White,
+                                                modifier = Modifier.rotate(if (menuExpanded.value) 180f else 0f)
+                                            )
+                                        }
+                                    }
+                                },
+                                expanded = menuExpanded.value,
+                                onDismissRequest = { menuExpanded.value = false }
                             ) {
-                                Text(if (permissionStates.value[it]!!) "Revoke" else "Grant")
+                                @Composable
+                                fun DeviceItem(info: DeviceInfo) {
+                                    DropdownMenuItem(onClick = {
+                                        currentDevice.value = info
+                                        menuExpanded.value = false
+                                    }) {
+                                        Text(info.deviceName)
+                                    }
+                                }
+
+                                availableDevices.forEach {
+                                    DeviceItem(it)
+                                }
+                                if (availableDevices.isEmpty()) {
+                                    DeviceInfo.EMPTY
+                                }
                             }
+                            if (currentDevice.value.deviceStatus != DeviceInfo.Status.DEVICE) {
+                                Spacer(Modifier.size(8.dp))
+                                Text(
+                                    text = currentDevice.value.deviceStatus.toString(),
+                                    modifier = Modifier.align(Alignment.CenterVertically),
+                                    color = Color.Red
+                                )
+                            }
+                            if (loading.value) {
+                                Spacer(Modifier.size(8.dp))
+                                CircularProgressIndicator()
+                            }
+                            Spacer(Modifier.weight(1f))
+                            Button(
+                                onClick = {
+                                    scope.launch { refreshInfo() }
+                                },
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            ) {
+                                Text("Refresh")
+                            }
+                        }
+                    }
+
+                    Box {
+                        if (currentDevice.value.deviceStatus == DeviceInfo.Status.DEVICE) {
+                            LazyColumnFor(items = permissionStates.value.keys.toList()) {
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .height(48.dp)
+                                        .padding(8.dp)
+                                ) {
+                                    Text(text = it, modifier = Modifier.align(Alignment.CenterVertically))
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Button(
+                                        modifier = Modifier.align(Alignment.CenterVertically),
+                                        onClick = {
+                                            scope.launch {
+                                                setPermission(
+                                                    currentDevice.value.deviceName,
+                                                    it,
+                                                    if (permissionStates.value[it]!!) "revoke" else "grant"
+                                                )
+                                                refreshInfo()
+                                            }
+                                        }
+                                    ) {
+                                        Text(if (permissionStates.value[it]!!) "Revoke" else "Grant")
+                                    }
+                                }
+                            }
+                        }
+
+                        if (loading.value) {
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                color = Color(0, 0, 0, 0xaa),
+                            ) {}
                         }
                     }
                 }
@@ -224,7 +256,7 @@ fun main() = Window(
     }
 }
 
-fun getDevices(): List<DeviceInfo> {
+suspend fun getDevices(): List<DeviceInfo> = withContext(Dispatchers.IO) {
     val list = ArrayList<DeviceInfo>()
 
     runCommand("adb devices").bufferedReader().forEachLine {
@@ -235,10 +267,10 @@ fun getDevices(): List<DeviceInfo> {
         }
     }
 
-    return list
+    list
 }
 
-fun checkPermissionGranted(device: String, permission: String): Boolean {
+suspend fun checkPermissionGranted(device: String, permission: String): Boolean = withContext(Dispatchers.IO) {
     var granted = false
     val pattern = Pattern.compile("\\d{8} \\d{8}")
 
@@ -254,15 +286,15 @@ fun checkPermissionGranted(device: String, permission: String): Boolean {
             }
         }
 
-    return granted
+    granted
 }
 
-fun setPermission(device: String, permission: String, action: String) {
+suspend fun setPermission(device: String, permission: String, action: String) = withContext(Dispatchers.IO) {
     runCommand("adb -s $device shell pm $action com.zacharee1.systemuituner $permission")
 }
 
-fun getSdkVersion(device: String): Int {
-    return runCommand("adb -s $device shell getprop ro.build.version.sdk").bufferedReader().use {
+suspend fun getSdkVersion(device: String): Int = withContext(Dispatchers.IO) {
+    runCommand("adb -s $device shell getprop ro.build.version.sdk").bufferedReader().use {
         it.readLine().toInt()
     }
 }
