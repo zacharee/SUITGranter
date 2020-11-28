@@ -57,14 +57,14 @@ data class DeviceInfo(
     }
 
     companion object {
-        val EMPTY = DeviceInfo("No devices found", Status.BLANK)
+        val EMPTY = DeviceInfo(R.string.no_devices_found, Status.BLANK)
     }
 
-    fun isBlank() = deviceName == "No devices found" && deviceStatus == Status.BLANK
+    fun isBlank() = deviceName == R.string.no_devices_found && deviceStatus == Status.BLANK
 }
 
 fun main() = Window(
-    title = "SystemUI Tuner Permissions Granter",
+    title = R.string.app_name,
     size = IntSize(640, 640),
     icon = ImageIO.read(Thread.currentThread().contextClassLoader.getResource("images/icon.png"))
 ) {
@@ -139,7 +139,7 @@ fun main() = Window(
                             Modifier.fillMaxWidth()
                                 .padding(8.dp)
                         ) {
-                            Text("Current device", modifier = Modifier.align(Alignment.CenterVertically))
+                            Text(R.string.current_device, modifier = Modifier.align(Alignment.CenterVertically))
                             Spacer(Modifier.size(8.dp))
                             DropdownMenu(
                                 toggle = {
@@ -209,7 +209,7 @@ fun main() = Window(
                                 },
                                 modifier = Modifier.align(Alignment.CenterVertically)
                             ) {
-                                Text("Refresh")
+                                Text(R.string.refresh)
                             }
                         }
                     }
@@ -237,7 +237,7 @@ fun main() = Window(
                                             }
                                         }
                                     ) {
-                                        Text(if (permissionStates.value[it]!!) "Revoke" else "Grant")
+                                        Text(if (permissionStates.value[it]!!) R.string.revoke else R.string.grant)
                                     }
                                 }
                             }
