@@ -19,6 +19,7 @@ dependencies {
     testImplementation(kotlin("test-junit"))
     implementation(compose.desktop.currentOs)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+    implementation("org.apache.commons:commons-lang3:3.11")
 }
 
 compose.desktop {

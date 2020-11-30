@@ -17,21 +17,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.vectorXmlResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import java.awt.image.BufferedImage
+import org.apache.commons.lang3.SystemUtils
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.InputStream
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.regex.Pattern
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 import javax.imageio.ImageIO
 
 const val WSS = "android.permission.WRITE_SECURE_SETTINGS"
@@ -305,7 +307,7 @@ fun main() = Window(
 suspend fun getDevices(): List<DeviceInfo> = withContext(Dispatchers.IO) {
     val list = ArrayList<DeviceInfo>()
 
-    runCommand("adb devices").bufferedReader().forEachLine {
+    runCommand("${makeAdbCommand()} devices").bufferedReader().forEachLine {
         if (!it.contains("List of", false) && it.isNotBlank()) {
             val split = it.split(Regex("\\s+"))
 
@@ -320,7 +322,7 @@ suspend fun checkPermissionGranted(device: String, permission: String): Boolean 
     var granted = false
     val pattern = Pattern.compile("\\d{8} \\d{8}")
 
-    runCommand("adb -s $device shell service call ${if (getSdkVersion(device) < 30) "package 20" else "permissionmgr 11"} s16 \"$permission\" s16 \"com.zacharee1.systemuituner\" i32 0")
+    runCommand("${makeAdbCommand()} -s $device shell service call ${if (getSdkVersion(device) < 30) "package 20" else "permissionmgr 11"} s16 \"$permission\" s16 \"com.zacharee1.systemuituner\" i32 0")
         .bufferedReader().forEachLine {
             if (it.startsWith("Result")) {
                 val matcher = pattern.matcher(it)
@@ -336,11 +338,11 @@ suspend fun checkPermissionGranted(device: String, permission: String): Boolean 
 }
 
 suspend fun setPermission(device: String, permission: String, action: String) = withContext(Dispatchers.IO) {
-    runCommand("adb -s $device shell pm $action com.zacharee1.systemuituner $permission")
+    runCommand("${makeAdbCommand()} -s $device shell pm $action com.zacharee1.systemuituner $permission")
 }
 
 suspend fun getSdkVersion(device: String): Int = withContext(Dispatchers.IO) {
-    runCommand("adb -s $device shell getprop ro.build.version.sdk").bufferedReader().use {
+    runCommand("${makeAdbCommand()} -s $device shell getprop ro.build.version.sdk").bufferedReader().use {
         it.readLine().toInt()
     }
 }
@@ -354,4 +356,79 @@ fun runCommand(command: String): InputStream {
     error.close()
 
     return process.inputStream
+}
+
+fun extractAdb() {
+    val path = when {
+        SystemUtils.IS_OS_WINDOWS -> {
+            "adb/windows.zip"
+        }
+        SystemUtils.IS_OS_MAC -> {
+            "adb/mac.zip"
+        }
+        SystemUtils.IS_OS_LINUX -> {
+            "adb/linux.zip"
+        }
+        else -> throw IllegalStateException("Unsupported OS")
+    }
+
+    val adbDir = File(Paths.get("").toAbsolutePath().toString(), "adb")
+    if (!adbDir.exists()) {
+        adbDir.mkdir()
+    }
+
+    val targetDir = File(adbDir, File(path).nameWithoutExtension)
+
+    if (!targetDir.exists() || targetDir.listFiles()?.find { it.name.startsWith("adb") } == null) {
+        val targetFile = File(adbDir, File(path).name)
+        if (!targetFile.exists()) {
+            Thread.currentThread().contextClassLoader.getResourceAsStream(path)?.use {
+                Files.copy(it, targetFile.toPath())
+            }
+        }
+
+        targetDir.mkdir()
+
+        ZipInputStream(FileInputStream(targetFile)).use { zipStream ->
+            val buffer = ByteArray(1024)
+            var entry: ZipEntry? = zipStream.nextEntry
+
+            while (entry != null) {
+                val file = File(targetDir, entry.name)
+
+                if (entry.isDirectory) {
+                    file.mkdirs()
+                } else {
+                    file.parentFile?.mkdirs()
+
+                    val os = FileOutputStream(file)
+                    var len = zipStream.read(buffer)
+
+                    while (len > 0) {
+                        os.write(buffer, 0, len)
+
+                        len = zipStream.read(buffer)
+                    }
+
+                    os.close()
+                }
+
+                zipStream.closeEntry()
+                entry = zipStream.nextEntry
+            }
+
+            zipStream.closeEntry()
+        }
+    }
+}
+
+fun makeAdbCommand(): String {
+    extractAdb()
+
+    return when {
+        SystemUtils.IS_OS_WINDOWS -> "adb\\windows\\adb.exe"
+        SystemUtils.IS_OS_MAC -> "adb/mac/adb"
+        SystemUtils.IS_OS_LINUX -> "adb/linux/adb"
+        else -> throw IllegalStateException("Unsupported OS")
+    }
 }
