@@ -190,7 +190,8 @@ fun main() = Window(
                                     DeviceInfo.EMPTY
                                 }
                             }
-                            if (currentDevice.value.deviceStatus != DeviceInfo.Status.DEVICE) {
+                            if (currentDevice.value.deviceStatus != DeviceInfo.Status.DEVICE
+                                && currentDevice.value != DeviceInfo.EMPTY) {
                                 Spacer(Modifier.size(R.dimen.spacing_dp))
                                 Text(
                                     text = currentDevice.value.deviceStatus.toString(),
