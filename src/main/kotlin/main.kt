@@ -192,7 +192,8 @@ fun main() = Window(
                                     }
                                 },
                                 expanded = menuExpanded.value,
-                                onDismissRequest = { menuExpanded.value = false }
+                                onDismissRequest = { menuExpanded.value = false },
+                                dropdownModifier = Modifier.background(R.color.color_card_background)
                             ) {
                                 @Composable
                                 fun DeviceItem(info: DeviceInfo) {
@@ -200,7 +201,10 @@ fun main() = Window(
                                         currentDevice.value = info
                                         menuExpanded.value = false
                                     }) {
-                                        Text(info.deviceName)
+                                        Text(
+                                            text = info.deviceName,
+                                            color = Color.White
+                                        )
                                     }
                                 }
 
