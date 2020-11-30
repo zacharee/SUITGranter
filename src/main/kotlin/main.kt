@@ -3,15 +3,16 @@ import androidx.compose.animation.core.transitionDefinition
 import androidx.compose.animation.transition
 import androidx.compose.desktop.DesktopMaterialTheme
 import androidx.compose.desktop.Window
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumnFor
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.Icon
+import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.vectorXmlResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -85,9 +87,7 @@ fun main() = Window(
         )
     }
 
-    suspend fun refreshInfo() {
-        loading.value = true
-
+    suspend fun updateDeviceList() {
         val newList = getDevices()
 
         if (!newList.containsAll(availableDevices) || !availableDevices.containsAll(newList)) {
@@ -108,6 +108,12 @@ fun main() = Window(
         } else {
             currentDevice.value = DeviceInfo.EMPTY
         }
+    }
+
+    suspend fun refreshInfo() {
+        loading.value = true
+
+        updateDeviceList()
 
         if (!currentDevice.value.isBlank()) {
             val wss = checkPermissionGranted(currentDevice.value.deviceName, WSS)
@@ -226,16 +232,26 @@ fun main() = Window(
                             }
                             if (loading.value) {
                                 Spacer(Modifier.size(R.dimen.spacing_dp))
-                                CircularProgressIndicator()
+                                CircularProgressIndicator(
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                )
                             }
                             Spacer(Modifier.weight(1f))
-                            Button(
-                                onClick = {
-                                    scope.launch { refreshInfo() }
-                                },
+                            Card(
+                                elevation = 0.dp,
+                                shape = CircleShape,
+                                backgroundColor = Color.Transparent,
                                 modifier = Modifier.align(Alignment.CenterVertically)
                             ) {
-                                Text(R.string.refresh)
+                                Icon(
+                                    imageVector = Icons.Filled.Refresh,
+                                    modifier = Modifier.clickable(
+                                        onClickLabel = R.string.refresh
+                                    ) {
+                                        scope.launch { refreshInfo() }
+                                    }.align(Alignment.CenterVertically)
+                                        .padding(12.dp)
+                                )
                             }
                         }
                     }
@@ -250,7 +266,7 @@ fun main() = Window(
                                 ) {
                                     Text(text = it, modifier = Modifier.align(Alignment.CenterVertically))
                                     Spacer(modifier = Modifier.weight(1f))
-                                    Button(
+                                    OutlinedButton(
                                         modifier = Modifier.align(Alignment.CenterVertically),
                                         onClick = {
                                             scope.launch {
@@ -261,9 +277,13 @@ fun main() = Window(
                                                 )
                                                 refreshInfo()
                                             }
-                                        }
+                                        },
+                                        border = BorderStroke(1.dp, MaterialTheme.colors.secondary)
                                     ) {
-                                        Text(if (permissionStates.value[it]!!) R.string.revoke else R.string.grant)
+                                        Text(
+                                            text = if (permissionStates.value[it]!!) R.string.revoke else R.string.grant,
+                                            color = Color.White,
+                                        )
                                     }
                                 }
                             }
