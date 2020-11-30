@@ -1,3 +1,6 @@
+import androidx.compose.animation.core.FloatPropKey
+import androidx.compose.animation.core.transitionDefinition
+import androidx.compose.animation.transition
 import androidx.compose.desktop.DesktopMaterialTheme
 import androidx.compose.desktop.Window
 import androidx.compose.foundation.Image
@@ -74,6 +77,8 @@ fun main() = Window(
     val menuExpanded = remember { mutableStateOf(false) }
     val loading = remember { mutableStateOf(false) }
 
+    var prevExpanded = false
+
     val permissionStates = remember {
         mutableStateOf(
             LinkedHashMap<String, Boolean>()
@@ -141,6 +146,17 @@ fun main() = Window(
                         ) {
                             Text(R.string.current_device, modifier = Modifier.align(Alignment.CenterVertically))
                             Spacer(Modifier.size(R.dimen.padding_dp))
+
+                            val rotation = FloatPropKey()
+                            val toggleTransition = transitionDefinition<Boolean> {
+                                state(true) {
+                                    this[rotation] = 180f
+                                }
+                                state(false) {
+                                    this[rotation] = 0f
+                                }
+                            }
+
                             DropdownMenu(
                                 toggle = {
                                     Box(
@@ -162,10 +178,15 @@ fun main() = Window(
                                             Text(
                                                 text = currentDevice.value.deviceName
                                             )
+                                            val state = transition(toggleTransition,
+                                                initState = if (prevExpanded != menuExpanded.value)
+                                                    !menuExpanded.value else menuExpanded.value,
+                                                toState = menuExpanded.value)
+                                            prevExpanded = menuExpanded.value
                                             Icon(
                                                 vectorXmlResource(R.image.chevron_down),
                                                 tint = Color.White,
-                                                modifier = Modifier.rotate(if (menuExpanded.value) 180f else 0f)
+                                                modifier = Modifier.rotate(state[rotation])
                                             )
                                         }
                                     }
