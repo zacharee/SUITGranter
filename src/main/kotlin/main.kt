@@ -65,8 +65,8 @@ data class DeviceInfo(
 
 fun main() = Window(
     title = R.string.app_name,
-    size = IntSize(640, 640),
-    icon = ImageIO.read(Thread.currentThread().contextClassLoader.getResource("images/icon.png"))
+    size = IntSize(R.dimen.window_size, R.dimen.window_size),
+    icon = ImageIO.read(Thread.currentThread().contextClassLoader.getResource(R.image.icon_png))
 ) {
     val scope = rememberCoroutineScope()
     val currentDevice = remember { mutableStateOf(DeviceInfo.EMPTY) }
@@ -132,24 +132,24 @@ fun main() = Window(
                 Column(Modifier.fillMaxSize()) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp),
-                        backgroundColor = Color(40, 40, 40)
+                        shape = RoundedCornerShape(0.dp, 0.dp, R.dimen.corner_size_dp, R.dimen.corner_size_dp),
+                        backgroundColor = R.color.color_card_background
                     ) {
                         Row(
                             Modifier.fillMaxWidth()
-                                .padding(8.dp)
+                                .padding(R.dimen.padding_dp)
                         ) {
                             Text(R.string.current_device, modifier = Modifier.align(Alignment.CenterVertically))
-                            Spacer(Modifier.size(8.dp))
+                            Spacer(Modifier.size(R.dimen.padding_dp))
                             DropdownMenu(
                                 toggle = {
                                     Box(
                                         Modifier.border(
-                                            width = 1.dp,
+                                            width = R.dimen.border_width_dp,
                                             color = MaterialTheme.colors.secondary,
-                                            shape = RoundedCornerShape(4.dp)
+                                            shape = RoundedCornerShape(R.dimen.corner_size_dp)
                                         )
-                                            .height(48.dp)
+                                            .height(R.dimen.menu_button_height_dp)
                                             .align(Alignment.CenterVertically)
                                             .clickable {
                                                 menuExpanded.value = !menuExpanded.value
@@ -157,13 +157,13 @@ fun main() = Window(
                                     ) {
                                         Row(
                                             modifier = Modifier.align(Alignment.Center)
-                                                .padding(8.dp)
+                                                .padding(R.dimen.padding_dp)
                                         ) {
                                             Text(
                                                 text = currentDevice.value.deviceName
                                             )
                                             Icon(
-                                                vectorXmlResource("images/chevron_down.xml"),
+                                                vectorXmlResource(R.image.chevron_down),
                                                 tint = Color.White,
                                                 modifier = Modifier.rotate(if (menuExpanded.value) 180f else 0f)
                                             )
@@ -191,7 +191,7 @@ fun main() = Window(
                                 }
                             }
                             if (currentDevice.value.deviceStatus != DeviceInfo.Status.DEVICE) {
-                                Spacer(Modifier.size(8.dp))
+                                Spacer(Modifier.size(R.dimen.spacing_dp))
                                 Text(
                                     text = currentDevice.value.deviceStatus.toString(),
                                     modifier = Modifier.align(Alignment.CenterVertically),
@@ -199,7 +199,7 @@ fun main() = Window(
                                 )
                             }
                             if (loading.value) {
-                                Spacer(Modifier.size(8.dp))
+                                Spacer(Modifier.size(R.dimen.spacing_dp))
                                 CircularProgressIndicator()
                             }
                             Spacer(Modifier.weight(1f))
@@ -219,8 +219,8 @@ fun main() = Window(
                             LazyColumnFor(items = permissionStates.value.keys.toList()) {
                                 Row(
                                     Modifier.fillMaxWidth()
-                                        .height(48.dp)
-                                        .padding(8.dp)
+                                        .height(R.dimen.permission_box_height)
+                                        .padding(R.dimen.padding_dp)
                                 ) {
                                     Text(text = it, modifier = Modifier.align(Alignment.CenterVertically))
                                     Spacer(modifier = Modifier.weight(1f))
@@ -246,7 +246,7 @@ fun main() = Window(
                         if (loading.value) {
                             Surface(
                                 modifier = Modifier.fillMaxSize(),
-                                color = Color(0, 0, 0, 0xaa),
+                                color = R.color.loading_overlay_color,
                             ) {}
                         }
                     }
