@@ -21,9 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.vectorXmlResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.apache.commons.lang3.SystemUtils
 import java.io.File
 import java.io.FileInputStream
@@ -75,7 +73,7 @@ fun main() = Window(
     size = IntSize(R.dimen.window_size, R.dimen.window_size),
     icon = ImageIO.read(Thread.currentThread().contextClassLoader.getResource(R.image.icon_png))
 ) {
-    val scope = rememberCoroutineScope()
+    val scope = MainScope()
     val currentDevice = remember { mutableStateOf(DeviceInfo.EMPTY) }
     val availableDevices = remember { mutableStateListOf<DeviceInfo>() }
     val menuExpanded = remember { mutableStateOf(false) }
@@ -418,6 +416,13 @@ fun extractAdb() {
             }
 
             zipStream.closeEntry()
+        }
+
+        if (!path.contains("windows")) {
+            File("adb/${File(path).nameWithoutExtension}", "adb")
+                .apply {
+                    setExecutable(true, false)
+                }
         }
     }
 }
